@@ -3,26 +3,15 @@ require('dotenv').config()
 const app = express()
 const port = process.env.SERVER_PORT;
 
+const user_route = require('./router/users')
+const product_route = require('./router/products')
 
-
+//MIDDLEWARE
 app.use(express.json())
-app.get('/', (req, res) => {
-    res.send("Hello I am " + req.body.name)
 
-})
+//API ROUTES
+app.use('/api', user_route)
+app.use('/api', product_route)
 
-app.post('/login', (req, res) => {
-    res.send('Hello I am LOGIN!')
-})
 
-app.put('/', (req, res) => {
-    res.send('Hello I am PUT!')
-})
-
-app.delete('/', (req, res) => {
-    res.send('Hello I am DELETE!')
-})
-
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
-})
+app.listen(port, () => console.log(`Example app listening on port ${port}`))
