@@ -2,6 +2,7 @@ require('dotenv').config()
 const { connect } = require('mongoose')
 const UserSchema = require('../schema/users')
 const { hash, compare } = require('bcryptjs')
+const { sign } = require('jsonwebtoken')
 
 const signup = async (req, res) => {
     const { username, email, password, gender } = req.body;
@@ -41,8 +42,6 @@ const user = (req, res) => {
     res.send("Hello I am " + req.body.username)
 }
 
-
-
 const login = async (req, res) => {
     const { email, password } = req.body;
     if (email && password) {
@@ -51,12 +50,29 @@ const login = async (req, res) => {
             const checkUser = await UserSchema.findOne({ email })
             if (checkUser) {
                 const decryptpass = await compare(password, checkUser.password)
-                decryptpass ?
+                if (decryptpass && email == checkUser.email) {
+
+                    const token = sign(
+                        {
+                            name: checkUser.username,
+                            email: checkUser.email,
+                            gender: checkUser.gender
+                        },
+
+                        process.env.JWT_SECRET
+                    )
+
                     res.json({
                         message: "Successfully Login",
-                        user: checkUser
-                    }) :
+                        token
+                    })
+
+                }
+
+
+                else {
                     res.status(400).json({ message: "Incorrect Password" })
+                }
             }
             else {
                 res.status(404).json({ message: "User Not Found" })
@@ -108,5 +124,44 @@ const userByID = async (req, res) => {
     }
 }
 
+const updateProfile = async (req, res) => {
+    const { email, username, profile_pic, gender } = req.body;
 
-module.exports = { user, all_users, login, signup, userByEmail, userByID }
+    try {
+        const filter = { email }
+        const update = { username, profile_pic, gender }
+        await connect(process.env.MONGO_URI)
+        const doc = await UserSchema.findOneAndUpdate(filter, update, {
+            new: true
+        });
+
+        res.json({ user: doc, message: "Profile Updated Sucessfully" })
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message })
+
+    }
+}
+
+const deleteUser = async (req, res) => {
+
+    // res.json({ email: req.body.email })
+
+    try {
+        await connect(process.env.MONGO_URI)
+        const deleteUser = await UserSchema.findOneAndDelete({ email: req.body.email })
+        const updatedusers = await UserSchema.find()
+        res.json({
+            message: "Successfully Deleted",
+            users: updatedusers
+        })
+
+    }
+
+    catch (error) {
+        res.status(400).json({ message: error.message })
+    }
+}
+
+
+module.exports = { user, all_users, login, signup, userByEmail, userByID, updateProfile, deleteUser }
