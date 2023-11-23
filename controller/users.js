@@ -3,6 +3,8 @@ const { connect } = require('mongoose')
 const UserSchema = require('../schema/users')
 const { hash, compare } = require('bcryptjs')
 const { sign } = require('jsonwebtoken')
+const nodemailer = require("nodemailer");
+var Mailgen = require('mailgen');
 
 const signup = async (req, res) => {
     const { username, email, password, gender } = req.body;
@@ -163,5 +165,95 @@ const deleteUser = async (req, res) => {
     }
 }
 
+const newsletter = async (req, res) => {
+    const { email } = req.body;
 
-module.exports = { user, all_users, login, signup, userByEmail, userByID, updateProfile, deleteUser }
+    const config = {
+        service: "gmail",
+        auth: {
+            user: process.env.NODEMAILER_EMAIL,
+            pass: process.env.NODEMAILER_PASSWORD,
+        },
+    }
+
+    const transporter = nodemailer.createTransport(config);
+
+
+    var mailGenerator = new Mailgen({
+        theme: 'salted',
+        product: {
+            // Appears in header & footer of e-mails
+            name: 'Fast NUCES',
+            link: 'https://www.nu.edu.pk/',
+            logo: 'https://khi.nu.edu.pk/wp-content/uploads/2023/01/FAST-NU-logo.png'
+        }
+    });
+
+    var emailDetails = {
+        body: {
+            name: 'User',
+            intro: 'Thanks for Subscribing us, you will get all the updates on your email',
+            outro: 'Need help, or have questions? Just reply to this email, we\'d love to help.',
+            table :{
+                data : [
+                    {
+                        name : "laiba",
+                        email : "hello123@gmail.com"
+                    },
+                    {
+                        name : "esha",
+                        email : "esha@gmail.com"
+                    }
+                ]
+            },
+            
+            action: [
+                {
+                    instructions: 'To get started with Mailgen, please click here:',
+                    button: {
+                        color: '#22BC66',
+                        text: 'Confirm your account',
+                        link: 'https://mailgen.js/confirm?s=d9729feb74992cc3482b350163a1a010',
+                        fallback: true
+                    }
+                },
+                {
+                    instructions: 'To read our frequently asked questions, please click here:',
+                    button: {
+                        text: 'Read our FAQ',
+                        link: 'https://mailgen.js/faq',
+                        fallback: {
+                            text: 'This is my custom text for fallback'
+                        }
+                    }
+                }
+            ]
+            
+        }
+    };
+
+    var emailBody = mailGenerator.generate(emailDetails);
+
+    if (!email) {
+        res.status(404).json({ message: "Email Required" })
+    }
+
+    else {
+        try {
+
+            const emailText = {
+                from: process.env.NODEMAILER_EMAIL, // sender address
+                to: email, // list of receivers
+                subject: "Thanks for Subscribing to Us", // Subject line
+                html: emailBody, // html body
+            }
+            const info = await transporter.sendMail(emailText);
+            res.json({ message: "EMAIL SENT SUCCESSFULLY" })
+        }
+        catch (error) { res.json({ message: error.message }) }
+
+    }
+}
+
+
+module.exports = { newsletter, user, all_users, login, signup, userByEmail, userByID, updateProfile, deleteUser }
